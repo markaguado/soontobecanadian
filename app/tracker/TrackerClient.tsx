@@ -6,7 +6,9 @@ import type { Timeline, FilterState } from '@/lib/types'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Search, Filter, Plus } from 'lucide-react'
+import { Search, Plus, Filter as FilterIcon } from 'lucide-react'
+import { Filters } from '@/components/tracker/Filters'
+import { TimelineTable } from '@/components/tracker/TimelineTable'
 
 export default function TrackerClient() {
   const [timelines, setTimelines] = useState<Timeline[]>([])
@@ -14,6 +16,14 @@ export default function TrackerClient() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [filters, setFilters] = useState<FilterState>({
+    stream: '',
+    visa_office: '',
+    type: '',
+    complexity: '',
+    completion_status: ''
+  })
+  const [showFilters, setShowFilters] = useState(true)
 
   useEffect(() => {
     fetchTimelines()
@@ -34,20 +44,77 @@ export default function TrackerClient() {
     }
   }
 
-  const handleSearch = (term: string) => {
-    setSearchTerm(term)
-    if (!term.trim()) {
-      setFilteredTimelines(timelines)
-      return
+  const applyFiltersAndSearch = (
+    timelinesList: Timeline[],
+    currentFilters: FilterState,
+    currentSearch: string
+  ): Timeline[] => {
+    if (!Array.isArray(timelinesList)) return []
+
+    let filtered = timelinesList
+
+    // Apply dropdown filters
+    if (currentFilters.stream) {
+      filtered = filtered.filter(t => t.stream === currentFilters.stream)
     }
 
-    const searchLower = term.toLowerCase()
-    const filtered = timelines.filter(t =>
-      t.username?.toLowerCase().includes(searchLower) ||
-      t.stream?.toLowerCase().includes(searchLower) ||
-      t.primary_visa_office?.toLowerCase().includes(searchLower) ||
-      t.application_type?.toLowerCase().includes(searchLower)
-    )
+    if (currentFilters.visa_office) {
+      filtered = filtered.filter(t => t.primary_visa_office === currentFilters.visa_office)
+    }
+
+    if (currentFilters.type) {
+      filtered = filtered.filter(t => t.application_type === currentFilters.type)
+    }
+
+    if (currentFilters.complexity) {
+      filtered = filtered.filter(t => {
+        if (!t.complexity) return false
+        return t.complexity.includes(currentFilters.complexity)
+      })
+    }
+
+    if (currentFilters.completion_status) {
+      filtered = filtered.filter(t => {
+        const hasEcopr = !!t.ecopr_passport_received_date
+        const hasPRCard = !!t.pr_card_received_date
+
+        switch (currentFilters.completion_status) {
+          case 'active':
+            return !hasEcopr && !hasPRCard
+          case 'ecopr':
+            return hasEcopr
+          case 'pr-card':
+            return hasPRCard
+          default:
+            return true
+        }
+      })
+    }
+
+    // Apply search
+    if (currentSearch && currentSearch.trim()) {
+      const searchLower = currentSearch.toLowerCase().trim()
+      filtered = filtered.filter(t =>
+        t.username?.toLowerCase().includes(searchLower) ||
+        t.stream?.toLowerCase().includes(searchLower) ||
+        t.primary_visa_office?.toLowerCase().includes(searchLower) ||
+        t.secondary_visa_office?.toLowerCase().includes(searchLower) ||
+        t.application_type?.toLowerCase().includes(searchLower)
+      )
+    }
+
+    return filtered
+  }
+
+  const handleFilterChange = (newFilters: FilterState) => {
+    setFilters(newFilters)
+    const filtered = applyFiltersAndSearch(timelines, newFilters, searchTerm)
+    setFilteredTimelines(filtered)
+  }
+
+  const handleSearch = (term: string) => {
+    setSearchTerm(term)
+    const filtered = applyFiltersAndSearch(timelines, filters, term)
     setFilteredTimelines(filtered)
   }
 
@@ -83,22 +150,20 @@ export default function TrackerClient() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-6">
+      <header className="border-b bg-card sticky top-0 z-50 shadow-sm">
+        <div className="container mx-auto px-4 py-4">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">🇨🇦 Immigration Timeline Tracker</h1>
-              <p className="text-muted-foreground mt-1">
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+                🇨🇦 Immigration Timeline Tracker
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">
                 Compare {timelines.length}+ real Express Entry processing timelines
               </p>
             </div>
 
             <div className="flex gap-2">
               <Button variant="outline" size="sm">
-                <Filter className="mr-2 h-4 w-4" />
-                Filters
-              </Button>
-              <Button size="sm">
                 <Plus className="mr-2 h-4 w-4" />
                 Share Timeline
               </Button>
@@ -107,115 +172,58 @@ export default function TrackerClient() {
         </div>
       </header>
 
-      {/* Search */}
-      <div className="border-b bg-muted/30">
-        <div className="container mx-auto px-4 py-4">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search by username, stream, or visa office..."
-              value={searchTerm}
-              onChange={(e) => handleSearch(e.target.value)}
-              className="pl-10"
-            />
+      <main className="container mx-auto px-4 py-6 space-y-6">
+        {/* Search Bar */}
+        <Card className="p-4">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search by username, stream, or visa office..."
+                value={searchTerm}
+                onChange={(e) => handleSearch(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            <Button
+              variant={showFilters ? 'default' : 'outline'}
+              size="default"
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <FilterIcon className="mr-2 h-4 w-4" />
+              {showFilters ? 'Hide' : 'Show'} Filters
+            </Button>
           </div>
 
           {searchTerm && (
-            <p className="text-sm text-muted-foreground mt-2">
-              Found {filteredTimelines.length} timeline{filteredTimelines.length !== 1 ? 's' : ''} matching "{searchTerm}"
+            <p className="text-sm text-muted-foreground mt-3">
+              Found <strong>{filteredTimelines.length}</strong> timeline{filteredTimelines.length !== 1 ? 's' : ''} matching &quot;{searchTerm}&quot;
             </p>
           )}
-        </div>
-      </div>
+        </Card>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        {filteredTimelines.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <p className="text-muted-foreground">
-                No timelines found. Try adjusting your search.
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">
-                Showing {filteredTimelines.length} timeline{filteredTimelines.length !== 1 ? 's' : ''}
-              </h2>
-            </div>
-
-            {/* Timeline Grid */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredTimelines.slice(0, 12).map((timeline) => (
-                <Card key={timeline.id} className="hover:shadow-lg transition-shadow">
-                  <CardHeader>
-                    <CardTitle className="text-lg">{timeline.username}</CardTitle>
-                    <CardDescription>
-                      <div className="flex gap-2 mt-2">
-                        {timeline.stream && (
-                          <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
-                            {timeline.stream}
-                          </span>
-                        )}
-                        {timeline.application_type && (
-                          <span className="inline-flex items-center rounded-md bg-purple-50 px-2 py-1 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-700/10">
-                            {timeline.application_type}
-                          </span>
-                        )}
-                      </div>
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <dl className="space-y-2 text-sm">
-                      {timeline.ita_date && (
-                        <div className="flex justify-between">
-                          <dt className="text-muted-foreground">ITA:</dt>
-                          <dd className="font-medium">{timeline.ita_date}</dd>
-                        </div>
-                      )}
-                      {timeline.aor_date && (
-                        <div className="flex justify-between">
-                          <dt className="text-muted-foreground">AOR:</dt>
-                          <dd className="font-medium">{timeline.aor_date}</dd>
-                        </div>
-                      )}
-                      {timeline.ecopr_passport_received_date && (
-                        <div className="flex justify-between">
-                          <dt className="text-muted-foreground">eCOPR:</dt>
-                          <dd className="font-medium text-green-600">{timeline.ecopr_passport_received_date}</dd>
-                        </div>
-                      )}
-                      {timeline.primary_visa_office && (
-                        <div className="flex justify-between">
-                          <dt className="text-muted-foreground">Office:</dt>
-                          <dd className="font-medium">{timeline.primary_visa_office}</dd>
-                        </div>
-                      )}
-                    </dl>
-
-                    <Button variant="outline" className="w-full mt-4" size="sm">
-                      View Details
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            {filteredTimelines.length > 12 && (
-              <div className="text-center py-8">
-                <p className="text-sm text-muted-foreground mb-4">
-                  Showing 12 of {filteredTimelines.length} timelines
-                </p>
-                <Button variant="outline">
-                  Load More
-                </Button>
-              </div>
-            )}
-          </div>
+        {/* Filters */}
+        {showFilters && (
+          <Filters
+            timelines={timelines}
+            onFilterChange={handleFilterChange}
+          />
         )}
+
+        {/* Results Summary */}
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">
+            Showing {filteredTimelines.length} timeline{filteredTimelines.length !== 1 ? 's' : ''}
+          </h2>
+        </div>
+
+        {/* Timeline Table */}
+        <TimelineTable
+          timelines={filteredTimelines}
+          onTimelineUpdated={fetchTimelines}
+        />
       </main>
     </div>
   )
