@@ -1,17 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Card } from '@/components/ui/card'
-import { X } from 'lucide-react'
 import type { Timeline, FilterState } from '@/lib/types'
 
 interface FiltersProps {
@@ -40,14 +29,13 @@ export function Filters({ timelines, onFilterChange }: FiltersProps) {
   }, [timelines])
 
   const updateFilters = (updates: Partial<FilterState>) => {
-    const newFilters: FilterState = {
+    onFilterChange({
       stream: updates.stream ?? selectedStream,
       visa_office: updates.visa_office ?? selectedVisaOffice,
       type: updates.type ?? selectedType,
       complexity: updates.complexity ?? selectedComplexity,
       completion_status: updates.completion_status ?? selectedCompletionStatus
-    }
-    onFilterChange(newFilters)
+    })
   }
 
   const handleReset = () => {
@@ -68,127 +56,113 @@ export function Filters({ timelines, onFilterChange }: FiltersProps) {
   const hasActiveFilters = selectedStream || selectedVisaOffice || selectedType ||
                           selectedComplexity || selectedCompletionStatus
 
-  const activeCount = [selectedStream, selectedVisaOffice, selectedType, selectedComplexity, selectedCompletionStatus]
-    .filter(Boolean).length
-
   return (
-    <Card className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold">Filter Timelines</h3>
-        {hasActiveFilters && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleReset}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <X className="mr-2 h-4 w-4" />
-            Clear {activeCount} {activeCount === 1 ? 'filter' : 'filters'}
-          </Button>
-        )}
+    <div className="filters" role="group" aria-label="Filter immigration timelines">
+      <div className="filter-group">
+        <label htmlFor="stream-filter">Stream</label>
+        <select
+          id="stream-filter"
+          value={selectedStream}
+          onChange={(e) => {
+            setSelectedStream(e.target.value)
+            updateFilters({ stream: e.target.value })
+          }}
+          aria-label="Filter timelines by immigration stream"
+        >
+          <option value="">All Streams</option>
+          {streams.map(stream => (
+            <option key={stream} value={stream}>
+              {stream}
+            </option>
+          ))}
+        </select>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        {/* Stream Filter */}
-        <div className="space-y-2">
-          <Label htmlFor="stream-filter">Stream</Label>
-          <Select value={selectedStream} onValueChange={(value) => {
-            setSelectedStream(value)
-            updateFilters({ stream: value })
-          }}>
-            <SelectTrigger id="stream-filter">
-              <SelectValue placeholder="All Streams" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">All Streams</SelectItem>
-              {streams.map(stream => (
-                <SelectItem key={stream} value={stream}>
-                  {stream}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Visa Office Filter */}
-        <div className="space-y-2">
-          <Label htmlFor="visa-office-filter">Visa Office</Label>
-          <Select value={selectedVisaOffice} onValueChange={(value) => {
-            setSelectedVisaOffice(value)
-            updateFilters({ visa_office: value })
-          }}>
-            <SelectTrigger id="visa-office-filter">
-              <SelectValue placeholder="All Visa Offices" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">All Visa Offices</SelectItem>
-              {visaOffices.map(office => (
-                <SelectItem key={office} value={office}>
-                  {office}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Type Filter */}
-        <div className="space-y-2">
-          <Label htmlFor="type-filter">Application Type</Label>
-          <Select value={selectedType} onValueChange={(value) => {
-            setSelectedType(value)
-            updateFilters({ type: value })
-          }}>
-            <SelectTrigger id="type-filter">
-              <SelectValue placeholder="All Types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">All Types</SelectItem>
-              <SelectItem value="Inland">Inland</SelectItem>
-              <SelectItem value="Outland">Outland</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Complexity Filter */}
-        <div className="space-y-2">
-          <Label htmlFor="complexity-filter">Complexity</Label>
-          <Select value={selectedComplexity} onValueChange={(value) => {
-            setSelectedComplexity(value)
-            updateFilters({ complexity: value })
-          }}>
-            <SelectTrigger id="complexity-filter">
-              <SelectValue placeholder="All" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">All Complexity</SelectItem>
-              <SelectItem value="Single">Single</SelectItem>
-              <SelectItem value="Family">Family</SelectItem>
-              <SelectItem value="Foreign Exp">With Foreign Exp</SelectItem>
-              <SelectItem value="No Foreign Exp">No Foreign Exp</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Status Filter */}
-        <div className="space-y-2">
-          <Label htmlFor="status-filter">Status</Label>
-          <Select value={selectedCompletionStatus} onValueChange={(value) => {
-            setSelectedCompletionStatus(value)
-            updateFilters({ completion_status: value })
-          }}>
-            <SelectTrigger id="status-filter">
-              <SelectValue placeholder="All" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">All Statuses</SelectItem>
-              <SelectItem value="active">Active (No eCOPR)</SelectItem>
-              <SelectItem value="ecopr">eCOPR Received</SelectItem>
-              <SelectItem value="pr-card">PR Card Received</SelectItem>
-              <SelectItem value="updated-today">📍 Updated Today</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="filter-group">
+        <label htmlFor="visa-office-filter">Visa Office</label>
+        <select
+          id="visa-office-filter"
+          value={selectedVisaOffice}
+          onChange={(e) => {
+            setSelectedVisaOffice(e.target.value)
+            updateFilters({ visa_office: e.target.value })
+          }}
+          aria-label="Filter timelines by visa processing office"
+        >
+          <option value="">All Visa Offices</option>
+          {visaOffices.map(office => (
+            <option key={office} value={office}>
+              {office}
+            </option>
+          ))}
+        </select>
       </div>
-    </Card>
+
+      <div className="filter-group">
+        <label htmlFor="type-filter">Application Type</label>
+        <select
+          id="type-filter"
+          value={selectedType}
+          onChange={(e) => {
+            setSelectedType(e.target.value)
+            updateFilters({ type: e.target.value })
+          }}
+          aria-label="Filter by application type"
+        >
+          <option value="">All Types</option>
+          <option value="Inland">Inland</option>
+          <option value="Outland">Outland</option>
+        </select>
+      </div>
+
+      <div className="filter-group">
+        <label htmlFor="complexity-filter">Complexity</label>
+        <select
+          id="complexity-filter"
+          value={selectedComplexity}
+          onChange={(e) => {
+            setSelectedComplexity(e.target.value)
+            updateFilters({ complexity: e.target.value })
+          }}
+          aria-label="Filter by application complexity"
+        >
+          <option value="">All Complexity</option>
+          <option value="Single">Single</option>
+          <option value="Family">Family</option>
+          <option value="Foreign Exp">With Foreign Exp</option>
+          <option value="No Foreign Exp">No Foreign Exp</option>
+        </select>
+      </div>
+
+      <div className="filter-group">
+        <label htmlFor="completion-filter">Status</label>
+        <select
+          id="completion-filter"
+          value={selectedCompletionStatus}
+          onChange={(e) => {
+            setSelectedCompletionStatus(e.target.value)
+            updateFilters({ completion_status: e.target.value })
+          }}
+          aria-label="Filter by completion status"
+        >
+          <option value="">All</option>
+          <option value="active">Active (No eCOPR)</option>
+          <option value="ecopr">eCOPR Received</option>
+          <option value="pr-card">PR Card Received</option>
+          <option value="updated-today">📍 Updated Today</option>
+          <option value="updated-7days">🕐 Updated Last 7 Days</option>
+        </select>
+      </div>
+
+      {hasActiveFilters && (
+        <button
+          onClick={handleReset}
+          className="btn-reset"
+          aria-label="Clear all active filters"
+        >
+          Clear All Filters
+        </button>
+      )}
+    </div>
   )
 }

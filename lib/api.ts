@@ -2,6 +2,23 @@ import { supabase } from './supabase'
 import type { Timeline, Comment } from './types'
 
 /**
+ * Fetch the total number of timelines (cheap COUNT query, no row data)
+ */
+export const getTimelineCount = async (): Promise<number> => {
+  try {
+    const { count, error } = await supabase
+      .from('timelines')
+      .select('*', { count: 'exact', head: true })
+
+    if (error) throw error
+    return count ?? 0
+  } catch (error) {
+    console.error('Error fetching timeline count:', error)
+    return 0
+  }
+}
+
+/**
  * Fetch all timelines from the database
  */
 export const getTimelines = async (): Promise<Timeline[]> => {

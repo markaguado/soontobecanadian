@@ -23,6 +23,7 @@ export interface Timeline {
   ecopr_passport_received_date?: string | null
   pr_card_sent_date?: string | null
   pr_card_received_date?: string | null
+  aor_to_bil_days?: number | null
 
   // Details
   stream?: string | null
